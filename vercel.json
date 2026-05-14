@@ -2,6 +2,7 @@
   "buildCommand": "pip install -r requirements.txt",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/main" }
+    { "source": "/api/(.*)", "destination": "/api/main" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
