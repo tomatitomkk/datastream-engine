@@ -1,13 +1,12 @@
 """
 Vercel Serverless Function entry point.
-Wraps the FastAPI application and mounts under /api/ prefix.
 """
-import sys
+import sys, os
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parent.parent / "backend"))
 
-from fastapi import FastAPI
-from main import app as backend_app
+backend_dir = str(Path(__file__).resolve().parent.parent / "backend")
+sys.path.insert(0, backend_dir)
 
-app = FastAPI(title="DataStream Engine API (Vercel)", version="3.2.1")
-app.mount("/api", backend_app)
+os.environ.setdefault("MATPLOTLIB_BACKEND", "Agg")
+
+from app import app
