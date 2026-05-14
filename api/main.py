@@ -8,7 +8,7 @@ backend_dir = str(Path(__file__).resolve().parent.parent / "backend")
 sys.path.insert(0, backend_dir)
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="DataStream Engine API")
@@ -123,5 +123,12 @@ else:
             return JSONResponse(content=processor.compute_stats())
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/")
+    async def serve_root():
+        idx = Path(__file__).resolve().parent.parent / "index.html"
+        if idx.exists():
+            return HTMLResponse(content=idx.read_text(encoding="utf-8"))
+        return JSONResponse({"status": "API running", "docs": "/docs"})
 
     app.include_router(router)
