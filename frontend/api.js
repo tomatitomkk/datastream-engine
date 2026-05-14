@@ -7,7 +7,7 @@
  * Arquitectura, diseno y desarrollo integral liderado por Dylan Ramirez Lopez.
  */
 
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = "https://automatizacionreportes.vercel.app/api";
 
 /**
  * POST /api/generate — Dispara el pipeline completo.
