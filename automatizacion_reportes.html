@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Automatización de Reportes Diarios · Dylan Ramirez Lopez</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b10;
+    --surface: #0e1420;
+    --surface2: #141c2e;
+    --border: rgba(99,179,237,0.12);
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --accent3: #8b5cf6;
+    --success: #10b981;
+    --text: #e8edf5;
+    --muted: #7b8fa8;
+    --prod: #16a34a;
+    --prod-bg: rgba(22,163,74,0.12);
+    --glow: rgba(59,130,246,0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* RADIAL GLOWS */
+  .glow-1 {
+    position: fixed;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+    top: -200px; left: -200px;
+    pointer-events: none; z-index: 0;
+    animation: drift1 18s ease-in-out infinite alternate;
+  }
+  .glow-2 {
+    position: fixed;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%);
+    bottom: -100px; right: -100px;
+    pointer-events: none; z-index: 0;
+    animation: drift2 22s ease-in-out infinite alternate;
+  }
+  @keyframes drift1 { from { transform: translate(0,0); } to { transform: translate(80px, 60px); } }
+  @keyframes drift2 { from { transform: translate(0,0); } to { transform: translate(-60px, -40px); } }
+
+  /* LAYOUT */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── NAV ── */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 28px 0 24px;
+    border-bottom: 1px solid var(--border);
+    animation: fadeDown 0.6s ease both;
+  }
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-logo .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.8)} }
+  .badge-prod {
+    background: var(--prod-bg);
+    color: #4ade80;
+    border: 1px solid rgba(74,222,128,0.3);
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    padding: 3px 10px;
+    text-transform: uppercase;
+  }
+  .nav-meta {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 96px 0 80px;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 64px;
+    align-items: center;
+  }
+  .hero-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    animation: fadeUp 0.6s 0.1s ease both;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    width: 32px; height: 1px;
+    background: var(--accent2);
+  }
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(36px, 4vw, 52px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    animation: fadeUp 0.6s 0.15s ease both;
+    margin-bottom: 20px;
+  }
+  .hero-title .gradient {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-desc {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--muted);
+    max-width: 480px;
+    animation: fadeUp 0.6s 0.2s ease both;
+    margin-bottom: 36px;
+  }
+  .hero-cta-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    animation: fadeUp 0.6s 0.25s ease both;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 28px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+    box-shadow: 0 0 24px rgba(59,130,246,0.3);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn-primary:hover { background: #2563eb; box-shadow: 0 0 36px rgba(59,130,246,0.5); transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+  /* TERMINAL CARD */
+  .terminal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    animation: fadeUp 0.6s 0.3s ease both;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
+  }
+  .terminal-header {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .terminal-header .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+  .terminal-title {
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 8px;
+    letter-spacing: 0.08em;
+  }
+  .terminal-body {
+    padding: 20px;
+    font-size: 12px;
+    line-height: 1.9;
+    color: #a8c0d6;
+  }
+  .t-comment { color: #4a6070; }
+  .t-keyword { color: #c792ea; }
+  .t-func { color: #82aaff; }
+  .t-str { color: #c3e88d; }
+  .t-num { color: #f78c6c; }
+  .t-prompt { color: var(--accent2); margin-right: 8px; }
+  .t-output { color: #4ade80; }
+  .t-cursor {
+    display: inline-block;
+    width: 7px; height: 14px;
+    background: var(--accent2);
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ── STATS ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0 0 80px;
+    animation: fadeUp 0.6s 0.35s ease both;
+  }
+  .stat-item {
+    background: var(--surface);
+    padding: 28px 24px;
+    text-align: center;
+    transition: background 0.2s;
+  }
+  .stat-item:hover { background: var(--surface2); }
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; }
+
+  /* ── SECTION TITLES ── */
+  .section-header {
+    margin-bottom: 48px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .section-tag {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-tag::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+  }
+  .section-subtitle { font-size: 13px; color: var(--muted); margin-top: 8px; line-height: 1.7; }
+
+  /* ── FEATURES GRID ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 80px;
+  }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 24px;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.5s ease both;
+  }
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,0.05), transparent);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .feature-card:hover { border-color: rgba(59,130,246,0.35); transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
+  .feature-card:hover::before { opacity: 1; }
+  .feature-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .fi-blue { background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.2); }
+  .fi-cyan { background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.2); }
+  .fi-purple { background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.2); }
+  .fi-green { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.2); }
+  .fi-orange { background: rgba(251,146,60,0.15); border: 1px solid rgba(251,146,60,0.2); }
+  .fi-red { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.2); }
+  .feature-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 10px;
+    position: relative; z-index: 1;
+  }
+  .feature-desc { font-size: 12px; color: var(--muted); line-height: 1.75; position: relative; z-index: 1; }
+
+  /* ── PIPELINE ── */
+  .pipeline {
+    margin-bottom: 80px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .pipeline-steps {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .pipeline-step {
+    flex: 1;
+    min-width: 140px;
+    position: relative;
+  }
+  .pipeline-step:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 16px;
+    z-index: 2;
+  }
+  .step-inner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 16px;
+    margin: 0 8px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .step-inner:hover { border-color: var(--accent); background: var(--surface2); }
+  .step-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .step-emoji { font-size: 24px; display: block; margin-bottom: 10px; }
+  .step-name { font-size: 12px; font-weight: 500; margin-bottom: 4px; }
+  .step-tech { font-size: 10px; color: var(--muted); }
+
+  /* ── TECH STACK ── */
+  .stack-section { margin-bottom: 80px; animation: fadeUp 0.6s ease both; }
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  .stack-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 12px;
+    text-align: center;
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .stack-pill:hover { border-color: var(--accent2); transform: translateY(-2px); }
+  .stack-pill-icon { font-size: 22px; display: block; margin-bottom: 8px; }
+  .stack-pill-name { font-size: 11px; font-weight: 500; color: var(--text); display: block; margin-bottom: 2px; }
+  .stack-pill-role { font-size: 10px; color: var(--muted); }
+
+  /* ── SCHEDULE ── */
+  .schedule-section { margin-bottom: 80px; animation: fadeUp 0.6s ease both; }
+  .schedule-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .cron-display {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 36px;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .cron-label { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+  .cron-breakdown {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .cron-part {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    text-align: center;
+  }
+  .cron-part-val { font-size: 14px; font-weight: 500; color: var(--accent); display: block; }
+  .cron-part-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .schedule-desc { font-size: 13px; color: var(--muted); line-height: 1.8; }
+  .schedule-desc strong { color: var(--text); font-weight: 500; }
+
+  /* ── OUTPUTS ── */
+  .outputs-section { margin-bottom: 80px; animation: fadeUp 0.6s ease both; }
+  .output-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .output-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    transition: all 0.2s;
+  }
+  .output-card:hover { border-color: rgba(59,130,246,0.4); }
+  .output-type {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .output-type::before { content: '●'; font-size: 7px; }
+  .output-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  .output-desc { font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+  /* ── CREDIT FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 48px 0 40px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .credit-block {}
+  .credit-label {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .credit-name {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 28px;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  .credit-name span {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .credit-role { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .footer-right { text-align: right; }
+  .footer-stack-line {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 2;
+  }
+  .footer-stack-line strong { color: var(--accent2); font-weight: 400; }
+  .version-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 12px;
+    letter-spacing: 0.08em;
+  }
+  .version-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:translateY(0); } }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: var(--border); margin: 0 0 80px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+    .features-grid { grid-template-columns: repeat(2,1fr); }
+    .stack-grid { grid-template-columns: repeat(3,1fr); }
+    .output-cards { grid-template-columns: 1fr; }
+    .schedule-card { grid-template-columns: 1fr; }
+    .footer-inner { flex-direction: column; align-items: flex-start; }
+    .footer-right { text-align: left; }
+  }
+  @media (max-width: 540px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .stack-grid { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="glow-1"></div>
+<div class="glow-2"></div>
+
+<div class="container">
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">
+      <div class="dot"></div>
+      DAILY·REPORTS
+    </div>
+    <span class="badge-prod">PRODUCCIÓN</span>
+    <div class="nav-meta">v2.4.1 · cron 06:00 AM</div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Sistema de Automatización</div>
+      <h1 class="hero-title">
+        Automatización<br>de <span class="gradient">Reportes</span><br>Diarios
+      </h1>
+      <p class="hero-desc">
+        Script de alto rendimiento que extrae datos de múltiples fuentes — SQL, APIs REST y archivos CSV — para generar reportes PDF completos con gráficos analíticos, ejecutado automáticamente cada mañana.
+      </p>
+      <div class="hero-cta-row">
+        <button class="btn-primary">
+          <span>▶</span> Ejecutar Ahora
+        </button>
+        <button class="btn-ghost">
+          <span>📄</span> Ver Logs
+        </button>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="terminal-card">
+        <div class="terminal-header">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <span class="terminal-title">reportes_diarios.py</span>
+        </div>
+        <div class="terminal-body">
+<span class="t-comment"># ── Automatización de Reportes Diarios</span><br>
+<span class="t-comment"># ── Dylan Ramirez Lopez · 2024</span><br><br>
+<span class="t-keyword">import</span> pandas <span class="t-keyword">as</span> pd<br>
+<span class="t-keyword">import</span> matplotlib.pyplot <span class="t-keyword">as</span> plt<br>
+<span class="t-keyword">from</span> reportlab.pdfgen <span class="t-keyword">import</span> canvas<br><br>
+<span class="t-keyword">def</span> <span class="t-func">run_pipeline</span>():<br>
+&nbsp;&nbsp;data = <span class="t-func">fetch_all_sources</span>()<br>
+&nbsp;&nbsp;charts = <span class="t-func">generate_charts</span>(data)<br>
+&nbsp;&nbsp;<span class="t-func">export_pdf</span>(charts, <span class="t-str">"reporte.pdf"</span>)<br><br>
+<span class="t-prompt">$</span><span class="t-func">run_pipeline</span>()<br>
+<span class="t-output">✓ SQL: 1,204 registros extraídos</span><br>
+<span class="t-output">✓ API: 87 endpoints consultados</span><br>
+<span class="t-output">✓ CSV: 3 archivos procesados</span><br>
+<span class="t-output">✓ PDF generado → reporte_hoy.pdf</span><br>
+<span class="t-prompt">$</span> <div class="t-cursor"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-item">
+      <span class="stat-value">1.2K+</span>
+      <span class="stat-label">Registros / Ejecución</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">3</span>
+      <span class="stat-label">Fuentes de Datos</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">&lt;2min</span>
+      <span class="stat-label">Tiempo de Ejecución</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">100%</span>
+      <span class="stat-label">Uptime Mensual</span>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="section-header">
+    <div class="section-tag">Funcionalidades MVP</div>
+    <h2 class="section-title">Todo en una sola ejecución</h2>
+    <p class="section-subtitle">Cada función fue diseñada para operar sin intervención humana, con tolerancia a fallos y logging estructurado.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card" style="animation-delay:0.05s">
+      <div class="feature-icon fi-blue">🗄️</div>
+      <div class="feature-title">Extracción SQL</div>
+      <div class="feature-desc">Conexión directa a bases de datos relacionales. Queries optimizadas con índices y paginación para grandes volúmenes sin timeout.</div>
+    </div>
+    <div class="feature-card" style="animation-delay:0.1s">
+      <div class="feature-icon fi-cyan">🔌</div>
+      <div class="feature-title">Integración APIs REST</div>
+      <div class="feature-desc">Consulta múltiples endpoints con autenticación OAuth/Bearer, retry automático y manejo de rate limits.</div>
+    </div>
+    <div class="feature-card" style="animation-delay:0.15s">
+      <div class="feature-icon fi-green">📊</div>
+      <div class="feature-title">Procesamiento CSV</div>
+      <div class="feature-desc">Ingesta y normalización de archivos CSV con Pandas: limpieza, tipado, detección de outliers y merge de datasets.</div>
+    </div>
+    <div class="feature-card" style="animation-delay:0.2s">
+      <div class="feature-icon fi-purple">📈</div>
+      <div class="feature-title">Gráficos Matplotlib</div>
+      <div class="feature-desc">Visualizaciones de alta resolución (300 DPI): barras, líneas de tendencia, heat maps y distribuciones automáticas.</div>
+    </div>
+    <div class="feature-card" style="animation-delay:0.25s">
+      <div class="feature-icon fi-orange">📄</div>
+      <div class="feature-title">Exportación PDF</div>
+      <div class="feature-desc">PDFs estructurados con ReportLab: portada, índice, secciones por fuente, gráficos embebidos y pie de página automático.</div>
+    </div>
+    <div class="feature-card" style="animation-delay:0.3s">
+      <div class="feature-icon fi-red">⏰</div>
+      <div class="feature-title">Scheduler Cron</div>
+      <div class="feature-desc">Ejecución silenciosa a las 6:00 AM con cron. Notificaciones de fallo por email y logs rotativos en /var/log.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- PIPELINE -->
+  <div class="pipeline">
+    <div class="section-header">
+      <div class="section-tag">Flujo de Datos</div>
+      <h2 class="section-title">Pipeline de extremo a extremo</h2>
+    </div>
+    <div class="pipeline-steps">
+      <div class="pipeline-step">
+        <div class="step-inner">
+          <span class="step-num">PASO 01</span>
+          <span class="step-emoji">⏰</span>
+          <div class="step-name">Trigger</div>
+          <div class="step-tech">cron 0 6 * * *</div>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-inner">
+          <span class="step-num">PASO 02</span>
+          <span class="step-emoji">🗄️</span>
+          <div class="step-name">Extracción</div>
+          <div class="step-tech">SQL · API · CSV</div>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-inner">
+          <span class="step-num">PASO 03</span>
+          <span class="step-emoji">🔄</span>
+          <div class="step-name">Transformación</div>
+          <div class="step-tech">Pandas · NumPy</div>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-inner">
+          <span class="step-num">PASO 04</span>
+          <span class="step-emoji">📊</span>
+          <div class="step-name">Visualización</div>
+          <div class="step-tech">Matplotlib</div>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-inner">
+          <span class="step-num">PASO 05</span>
+          <span class="step-emoji">📄</span>
+          <div class="step-name">Exportación</div>
+          <div class="step-tech">ReportLab PDF</div>
+        </div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-inner">
+          <span class="step-num">PASO 06</span>
+          <span class="step-emoji">📬</span>
+          <div class="step-name">Distribución</div>
+          <div class="step-tech">Email · Drive</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STACK -->
+  <div class="stack-section">
+    <div class="section-header">
+      <div class="section-tag">Stack Tecnológico</div>
+      <h2 class="section-title">Tecnologías probadas en producción</h2>
+    </div>
+    <div class="stack-grid">
+      <div class="stack-pill">
+        <span class="stack-pill-icon">🐍</span>
+        <span class="stack-pill-name">Python 3.11</span>
+        <span class="stack-pill-role">Core Runtime</span>
+      </div>
+      <div class="stack-pill">
+        <span class="stack-pill-icon">🐼</span>
+        <span class="stack-pill-name">Pandas</span>
+        <span class="stack-pill-role">Data Wrangling</span>
+      </div>
+      <div class="stack-pill">
+        <span class="stack-pill-icon">📉</span>
+        <span class="stack-pill-name">Matplotlib</span>
+        <span class="stack-pill-role">Visualización</span>
+      </div>
+      <div class="stack-pill">
+        <span class="stack-pill-icon">📑</span>
+        <span class="stack-pill-name">ReportLab</span>
+        <span class="stack-pill-role">PDF Engine</span>
+      </div>
+      <div class="stack-pill">
+        <span class="stack-pill-icon">⚙️</span>
+        <span class="stack-pill-name">cron</span>
+        <span class="stack-pill-role">Scheduler</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="schedule-section">
+    <div class="section-header">
+      <div class="section-tag">Programación</div>
+      <h2 class="section-title">Ejecución automática diaria</h2>
+    </div>
+    <div class="schedule-card">
+      <div>
+        <div class="cron-display">0 6 * * *</div>
+        <div class="cron-label">Expresión crontab activa en servidor</div>
+        <div class="cron-breakdown">
+          <div class="cron-part"><span class="cron-part-val">0</span><span class="cron-part-lbl">Min</span></div>
+          <div class="cron-part"><span class="cron-part-val">6</span><span class="cron-part-lbl">Hora</span></div>
+          <div class="cron-part"><span class="cron-part-val">*</span><span class="cron-part-lbl">Día</span></div>
+          <div class="cron-part"><span class="cron-part-val">*</span><span class="cron-part-lbl">Mes</span></div>
+          <div class="cron-part"><span class="cron-part-val">*</span><span class="cron-part-lbl">Semana</span></div>
+        </div>
+      </div>
+      <div class="schedule-desc">
+        El script se ejecuta <strong>cada mañana a las 6:00 AM</strong> de forma automática sin intervención. Los reportes están disponibles en bandeja de entrada antes de que inicie la jornada laboral.<br><br>
+        En caso de fallo, el sistema envía una <strong>alerta por email</strong>, registra el error en los logs rotativos y genera un reporte de excepción detallado para diagnóstico.
+      </div>
+    </div>
+  </div>
+
+  <!-- OUTPUTS -->
+  <div class="outputs-section">
+    <div class="section-header">
+      <div class="section-tag">Entregables</div>
+      <h2 class="section-title">Outputs generados por ejecución</h2>
+    </div>
+    <div class="output-cards">
+      <div class="output-card">
+        <div class="output-type">PDF</div>
+        <div class="output-title">Reporte Ejecutivo</div>
+        <div class="output-desc">Documento multi-página con portada, índice automático, secciones de KPIs, gráficos y análisis de tendencias.</div>
+      </div>
+      <div class="output-card">
+        <div class="output-type">LOG</div>
+        <div class="output-title">Registro de Ejecución</div>
+        <div class="output-desc">Log estructurado con timestamps, conteo de registros, tiempos por fuente y cualquier advertencia o error.</div>
+      </div>
+      <div class="output-card">
+        <div class="output-type">EMAIL</div>
+        <div class="output-title">Distribución Automática</div>
+        <div class="output-desc">El PDF se adjunta y envía a la lista de destinatarios configurada, con asunto dinámico con la fecha del reporte.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER / CREDIT -->
+  <footer>
+    <div class="footer-inner">
+      <div class="credit-block">
+        <div class="credit-label">Desarrollado por</div>
+        <div class="credit-name"><span>Dylan Ramirez</span> Lopez</div>
+        <div class="credit-role">Software Engineer · Automatización &amp; Data Pipelines</div>
+      </div>
+      <div class="footer-right">
+        <div class="footer-stack-line">
+          <strong>Python</strong> · <strong>Pandas</strong> · <strong>Matplotlib</strong> · <strong>ReportLab</strong> · <strong>cron</strong>
+        </div>
+        <div class="footer-stack-line">
+          Entorno: <strong>Producción</strong> &nbsp;|&nbsp; Servidor: <strong>Linux · Ubuntu 22.04</strong>
+        </div>
+        <div class="version-badge">
+          <div class="version-dot"></div>
+          v2.4.1 · Sistema activo
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

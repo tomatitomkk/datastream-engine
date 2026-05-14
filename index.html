@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>DataStream Engine · Panel de Sistema</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #07070d;
+      --bg-card: #0d0d1a;
+      --bg-surface: #111122;
+      --border-subtle: #1a1a3a;
+      --accent-cyan: #00f0ff;
+      --accent-green: #00ff41;
+      --accent-purple: #7c3aed;
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888aa;
+      --text-muted: #555577;
+      --glow-cyan: 0 0 20px rgba(0, 240, 255, 0.15);
+      --glow-green: 0 0 20px rgba(0, 255, 65, 0.12);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      overflow-x: hidden;
+      min-height: 100vh;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace !important; }
+
+    /* ── Background Grid ── */
+    .bg-grid {
+      background-size: 40px 40px;
+      background-image:
+        linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
+    }
+    .bg-grid::after {
+      content: ''; position: fixed; inset: 0;
+      background: radial-gradient(ellipse at 20% 50%, rgba(0, 240, 255, 0.06) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(124, 58, 237, 0.04) 0%, transparent 50%),
+                  radial-gradient(ellipse at 50% 80%, rgba(0, 255, 65, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    /* ── Production Badge ── */
+    .badge-pulse { animation: badgePulse 2s ease-in-out infinite; }
+    @keyframes badgePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .badge-dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      background: #00ff41; margin-right: 6px;
+      box-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+      animation: dotPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes dotPulse {
+      0%, 100% { box-shadow: 0 0 4px rgba(0, 255, 65, 0.3); }
+      50% { box-shadow: 0 0 14px rgba(0, 255, 65, 0.9); }
+    }
+
+    /* ── Glow utilities ── */
+    .glow-cyan { box-shadow: var(--glow-cyan); }
+    .glow-green { box-shadow: var(--glow-green); }
+    .hover-glow-cyan:hover { box-shadow: 0 0 30px rgba(0, 240, 255, 0.25); border-color: rgba(0, 240, 255, 0.4); }
+    .hover-glow-purple:hover { box-shadow: 0 0 30px rgba(124, 58, 237, 0.2); border-color: rgba(124, 58, 237, 0.4); }
+
+    /* ── Terminal ── */
+    .terminal-cursor::after {
+      content: '▊';
+      animation: blink 1s step-end infinite;
+      color: var(--accent-cyan);
+      font-size: 1.1em;
+      margin-left: 2px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .terminal-line {
+      overflow: hidden;
+      white-space: nowrap;
+      animation: typeIn 0.05s steps(1) forwards;
+      opacity: 0;
+    }
+    @keyframes typeIn { to { opacity: 1; } }
+
+    /* ── Feature Cards ── */
+    .feature-card {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 24px;
+      transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      border-radius: 12px;
+      opacity: 0;
+      background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%), rgba(0, 240, 255, 0.06), transparent 60%);
+      transition: opacity 0.4s;
+      pointer-events: none;
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-card:hover { transform: translateY(-4px); border-color: rgba(0, 240, 255, 0.25); }
+
+    /* ── Pipeline (Desktop horizontal) ── */
+    .pipeline-step {
+      position: relative;
+      transition: all 0.5s ease;
+      opacity: 0.35;
+    }
+    .pipeline-step.active { opacity: 1; }
+    .pipeline-step .step-dot {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      background: var(--bg-deep);
+      transition: all 0.5s ease; position: relative; z-index: 2;
+      color: var(--text-muted); flex-shrink: 0;
+    }
+    .pipeline-step.active .step-dot {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.12);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.25);
+    }
+    .pipeline-step .step-line {
+      position: absolute; top: 16px; left: 32px; right: -32px;
+      height: 2px; background: var(--border-subtle); z-index: 1;
+    }
+    .pipeline-step.active .step-line { background: var(--accent-cyan); }
+    .pipeline-step:last-child .step-line { display: none; }
+
+    /* ── Pipeline (Mobile vertical) ── */
+    @media (max-width: 767px) {
+      #pipeline.desktop-layout { display: none; }
+      #pipeline-mobile { display: flex !important; }
+    }
+    @media (min-width: 768px) {
+      #pipeline.desktop-layout { display: flex; }
+      #pipeline-mobile { display: none !important; }
+    }
+    .pipeline-mobile-step {
+      display: flex; align-items: flex-start; gap: 16px;
+      position: relative; padding-bottom: 24px;
+      opacity: 0.35; transition: all 0.5s ease;
+    }
+    .pipeline-mobile-step.active { opacity: 1; }
+    .pipeline-mobile-step:last-child { padding-bottom: 0; }
+    .pipeline-mobile-step .step-line-v {
+      position: absolute; top: 32px; left: 15px; bottom: 0;
+      width: 2px; background: var(--border-subtle);
+    }
+    .pipeline-mobile-step.active .step-line-v { background: var(--accent-cyan); }
+    .pipeline-mobile-step:last-child .step-line-v { display: none; }
+    .pipeline-mobile-step .step-dot-v {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      background: var(--bg-deep); transition: all 0.5s ease;
+      color: var(--text-muted); flex-shrink: 0; position: relative; z-index: 2;
+    }
+    .pipeline-mobile-step.active .step-dot-v {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 240, 255, 0.12);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.25);
+    }
+
+    /* ── Section transitions ── */
+    .section-hidden { opacity: 0; transform: translateY(30px); transition: all 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+    .section-visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Crontab ── */
+    .cron-field {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 12px 8px; min-width: 56px; min-height: 44px;
+      border-radius: 8px;
+      background: rgba(0, 240, 255, 0.04);
+      border: 1px solid rgba(0, 240, 255, 0.08);
+      transition: all 0.3s;
+    }
+    .cron-field:hover {
+      background: rgba(0, 240, 255, 0.08);
+      border-color: rgba(0, 240, 255, 0.2);
+    }
+    .cron-field .value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px; font-weight: 700;
+      color: var(--accent-cyan);
+    }
+    .cron-field .label {
+      font-size: 10px; color: var(--text-secondary);
+      margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* ── Output cards ── */
+    .output-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 28px 24px;
+      transition: all 0.35s;
+    }
+    .output-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(0, 240, 255, 0.2);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ── Touch-friendly buttons ── */
+    .touch-btn {
+      min-height: 44px; min-width: 44px;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-deep); }
+    ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a6a; }
+
+    /* ── Terminal responsive ── */
+    .term-text {
+      font-size: clamp(11px, 2.8vw, 14px);
+    }
+
+    /* ── Responsive title ── */
+    .hero-title {
+      font-size: clamp(1.75rem, 8vw, 4.5rem);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <!-- ─── NAV ─── -->
+  <nav class="relative z-20 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 max-w-7xl mx-auto border-b border-white/5">
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="text-lg sm:text-xl font-bold tracking-tight flex-shrink-0" style="color:var(--accent-cyan);">◈</span>
+      <span class="font-semibold text-[10px] sm:text-sm tracking-wide text-white/70 truncate">DATASTREAM · ENGINE</span>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+      <span class="badge-pulse flex items-center text-[9px] sm:text-[11px] font-mono font-semibold uppercase tracking-widest px-2 sm:px-3 py-1.5 rounded-full border" style="border-color:rgba(0,255,65,0.25);color:var(--accent-green);background:rgba(0,255,65,0.06);">
+        <span class="badge-dot"></span>
+        <span class="hidden xs:inline sm:inline">PRODUCCIÓN: ACTIVO</span>
+        <span class="inline xs:hidden sm:hidden">ACTIVO</span>
+      </span>
+      <span class="text-[10px] sm:text-[11px] font-mono text-text-secondary hidden sm:block opacity-50">v3.2.1</span>
+    </div>
+  </nav>
+
+  <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-20">
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- 1 ── HERO ── -->
+    <!-- ════════════════════════════════════════════════ -->
+    <section class="pt-12 sm:pt-20 md:pt-28 pb-12 sm:pb-16 md:pb-20">
+      <div class="text-center max-w-4xl mx-auto mb-8 sm:mb-10">
+        <div class="inline-flex items-center gap-2 px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[11px] font-mono font-semibold uppercase tracking-widest mb-4 sm:mb-6" style="background:rgba(0,240,255,0.06);border:1px solid rgba(0,240,255,0.12);color:var(--accent-cyan);">
+          <span class="inline-block w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full" style="background:var(--accent-cyan);box-shadow:0 0 8px rgba(0,240,255,0.6);"></span>
+          Sistema de Automatización de Datos
+        </div>
+        <h1 class="hero-title font-extrabold leading-[1.05] tracking-tight mb-4 sm:mb-6 bg-clip-text text-transparent" style="background-image:linear-gradient(135deg,#e8e8f0 0%,#8888cc 50%,var(--accent-cyan) 100%);">
+          De la Ingesta<br/>al Reporte,<br/><span style="color:var(--accent-cyan);background:none;">Sin intervención.</span>
+        </h1>
+        <p class="text-text-secondary text-xs sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed px-2 sm:px-0">
+          Pipeline ETL autónomo que extrae, transforma y distribuye datos desde múltiples fuentes
+          sin supervisión manual. Diseñado para ingenieros que exigen precisión.
+        </p>
+      </div>
+
+      <!-- Terminal -->
+      <div class="max-w-2xl mx-auto rounded-xl overflow-hidden border" style="background:rgba(0,0,0,0.6);border-color:rgba(0,240,255,0.08);backdrop-filter:blur(8px);">
+        <div class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 border-b overflow-x-auto" style="background:rgba(0,0,0,0.4);border-color:rgba(255,255,255,0.04);">
+          <span class="w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full bg-red-500/60 flex-shrink-0"></span>
+          <span class="w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full bg-yellow-500/60 flex-shrink-0"></span>
+          <span class="w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full bg-green-500/60 flex-shrink-0"></span>
+          <span class="ml-2 sm:ml-3 text-[9px] sm:text-[11px] font-mono text-text-muted truncate">autodata@engine:~$ ./bootstrap.sh</span>
+        </div>
+        <div id="terminal-body" class="p-3 sm:p-5 font-mono term-text leading-relaxed min-h-[180px] sm:min-h-[240px] max-h-[260px] sm:max-h-[360px] overflow-y-auto overflow-x-hidden break-all" style="color:var(--text-secondary);word-break:break-word;">
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- 2 ── STATS ── -->
+    <!-- ════════════════════════════════════════════════ -->
+    <section id="stats" class="py-10 sm:py-16 section-hidden">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+        <div class="stat-card rounded-xl p-4 sm:p-5 md:p-6 border text-center transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border-color:var(--border-subtle);">
+          <div class="text-xl sm:text-2xl md:text-3xl font-bold font-mono stat-value" style="color:var(--accent-cyan);" data-target="1847203">0</div>
+          <div class="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-1.5" style="color:var(--text-secondary);">Registros Procesados</div>
+        </div>
+        <div class="stat-card rounded-xl p-4 sm:p-5 md:p-6 border text-center transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border-color:var(--border-subtle);">
+          <div class="text-xl sm:text-2xl md:text-3xl font-bold font-mono stat-value" style="color:var(--accent-green);" data-target="12">0</div>
+          <div class="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-1.5" style="color:var(--text-secondary);">Fuentes Activas</div>
+        </div>
+        <div class="stat-card rounded-xl p-4 sm:p-5 md:p-6 border text-center transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border-color:var(--border-subtle);">
+          <div class="text-xl sm:text-2xl md:text-3xl font-bold font-mono stat-value" style="color:var(--accent-cyan);" data-target="99.97">0</div>
+          <div class="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-1.5" style="color:var(--text-secondary);">Uptime del Sistema</div>
+        </div>
+        <div class="stat-card rounded-xl p-4 sm:p-5 md:p-6 border text-center transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border-color:var(--border-subtle);">
+          <div class="text-xl sm:text-2xl md:text-3xl font-bold font-mono stat-value" style="color:var(--accent-green);" data-target="2472">0</div>
+          <div class="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-1.5" style="color:var(--text-secondary);">Ejecuciones Completadas</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- 3 ── FEATURE CARDS ── -->
+    <!-- ════════════════════════════════════════════════ -->
+    <section class="py-10 sm:py-16 section-hidden">
+      <div class="text-center mb-8 sm:mb-12">
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight mb-2 sm:mb-3">Capacidades del <span style="color:var(--accent-cyan);">Motor</span></h2>
+        <p class="text-text-secondary text-xs sm:text-sm md:text-base max-w-xl mx-auto px-2">Cada módulo opera de forma independiente y se orquesta mediante el planificador central.</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
+        <div class="feature-card">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg mb-4" style="background:rgba(0,240,255,0.08);color:var(--accent-cyan);">🗄</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-2">Extracción SQL</h3>
+          <p class="text-xs sm:text-sm" style="color:var(--text-secondary);">Conexión directa a motores PostgreSQL, MySQL y SQL Server con consultas parametrizadas y reintentos automáticos.</p>
+        </div>
+        <div class="feature-card">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg mb-4" style="background:rgba(124,58,237,0.08);color:var(--accent-purple);">🔌</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-2">Consumo de APIs</h3>
+          <p class="text-xs sm:text-sm" style="color:var(--text-secondary);">Integración RESTful con rate-limiting, paginación automática y transformación de respuestas JSON/XML.</p>
+        </div>
+        <div class="feature-card">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg mb-4" style="background:rgba(0,240,255,0.08);color:var(--accent-cyan);">📄</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-2">Procesamiento CSV</h3>
+          <p class="text-xs sm:text-sm" style="color:var(--text-secondary);">Parser de alto rendimiento con detección de encoding, normalización de tipos y manejo de archivos de gran volumen.</p>
+        </div>
+        <div class="feature-card">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg mb-4" style="background:rgba(124,58,237,0.08);color:var(--accent-purple);">📊</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-2">Gráficos (Matplotlib)</h3>
+          <p class="text-xs sm:text-sm" style="color:var(--text-secondary);">Generación automatizada de visualizaciones estadísticas: barras, líneas, dispersión y heatmaps con tematización corporativa.</p>
+        </div>
+        <div class="feature-card">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg mb-4" style="background:rgba(0,240,255,0.08);color:var(--accent-cyan);">📑</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-2">Reportes (ReportLab)</h3>
+          <p class="text-xs sm:text-sm" style="color:var(--text-secondary);">Composición programática de PDFs con tablas dinámicas, gráficos incrustados, encabezados personalizados y paginación.</p>
+        </div>
+        <div class="feature-card">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg mb-4" style="background:rgba(124,58,237,0.08);color:var(--accent-purple);">⏱</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-2">Automatización (Cron)</h3>
+          <p class="text-xs sm:text-sm" style="color:var(--text-secondary);">Programación basada en expresiones Cron con herencia de configuración, logs de ejecución y alertas ante fallos.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- 4 ── VISUAL PIPELINE ── -->
+    <!-- ════════════════════════════════════════════════ -->
+    <section class="py-10 sm:py-16 section-hidden">
+      <div class="text-center mb-8 sm:mb-12">
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight mb-2 sm:mb-3">Flujo de <span style="color:var(--accent-cyan);">Datos</span></h2>
+        <p class="text-text-secondary text-xs sm:text-sm md:text-base max-w-xl mx-auto px-2">Recorrido extremo a extremo: desde la fuente original hasta el entregable final.</p>
+      </div>
+
+      <!-- Desktop horizontal pipeline -->
+      <div id="pipeline" class="desktop-layout flex flex-wrap justify-center gap-x-0 gap-y-6 md:gap-0 relative max-w-4xl mx-auto">
+        <div class="pipeline-step active flex flex-col items-center w-[110px] sm:w-[130px] md:w-[140px] flex-shrink-0" data-step="0">
+          <div class="step-dot">1</div>
+          <div class="step-line"></div>
+          <p class="text-[11px] sm:text-xs font-semibold mt-2 text-center">Ingesta</p>
+          <p class="text-[9px] sm:text-[10px] mt-0.5 text-center" style="color:var(--text-muted);">DB / API / CSV</p>
+        </div>
+        <div class="pipeline-step flex flex-col items-center w-[110px] sm:w-[130px] md:w-[140px] flex-shrink-0" data-step="1">
+          <div class="step-dot">2</div>
+          <div class="step-line"></div>
+          <p class="text-[11px] sm:text-xs font-semibold mt-2 text-center">Extracción</p>
+          <p class="text-[9px] sm:text-[10px] mt-0.5 text-center" style="color:var(--text-muted);">SQL / REST</p>
+        </div>
+        <div class="pipeline-step flex flex-col items-center w-[110px] sm:w-[130px] md:w-[140px] flex-shrink-0" data-step="2">
+          <div class="step-dot">3</div>
+          <div class="step-line"></div>
+          <p class="text-[11px] sm:text-xs font-semibold mt-2 text-center">Transformación</p>
+          <p class="text-[9px] sm:text-[10px] mt-0.5 text-center" style="color:var(--text-muted);">Pandas / Normalizar</p>
+        </div>
+        <div class="pipeline-step flex flex-col items-center w-[110px] sm:w-[130px] md:w-[140px] flex-shrink-0" data-step="3">
+          <div class="step-dot">4</div>
+          <div class="step-line"></div>
+          <p class="text-[11px] sm:text-xs font-semibold mt-2 text-center">Validación</p>
+          <p class="text-[9px] sm:text-[10px] mt-0.5 text-center" style="color:var(--text-muted);">Checksums / Tipos</p>
+        </div>
+        <div class="pipeline-step flex flex-col items-center w-[110px] sm:w-[130px] md:w-[140px] flex-shrink-0" data-step="4">
+          <div class="step-dot">5</div>
+          <div class="step-line"></div>
+          <p class="text-[11px] sm:text-xs font-semibold mt-2 text-center">Render</p>
+          <p class="text-[9px] sm:text-[10px] mt-0.5 text-center" style="color:var(--text-muted);">PDF / Gráficos</p>
+        </div>
+        <div class="pipeline-step flex flex-col items-center w-[110px] sm:w-[130px] md:w-[140px] flex-shrink-0" data-step="5">
+          <div class="step-dot">6</div>
+          <p class="text-[11px] sm:text-xs font-semibold mt-2 text-center">Distribución</p>
+          <p class="text-[9px] sm:text-[10px] mt-0.5 text-center" style="color:var(--text-muted);">Email / Almacén</p>
+        </div>
+      </div>
+
+      <!-- Mobile vertical pipeline -->
+      <div id="pipeline-mobile" class="flex-col max-w-sm mx-auto" style="display:none;">
+        <div class="pipeline-mobile-step active" data-step="0">
+          <div class="step-line-v"></div>
+          <div class="step-dot-v">1</div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold">Ingesta</p>
+            <p class="text-xs mt-0.5" style="color:var(--text-muted);">DB / API / CSV</p>
+          </div>
+        </div>
+        <div class="pipeline-mobile-step" data-step="1">
+          <div class="step-line-v"></div>
+          <div class="step-dot-v">2</div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold">Extracción</p>
+            <p class="text-xs mt-0.5" style="color:var(--text-muted);">SQL / REST</p>
+          </div>
+        </div>
+        <div class="pipeline-mobile-step" data-step="2">
+          <div class="step-line-v"></div>
+          <div class="step-dot-v">3</div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold">Transformación</p>
+            <p class="text-xs mt-0.5" style="color:var(--text-muted);">Pandas / Normalizar</p>
+          </div>
+        </div>
+        <div class="pipeline-mobile-step" data-step="3">
+          <div class="step-line-v"></div>
+          <div class="step-dot-v">4</div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold">Validación</p>
+            <p class="text-xs mt-0.5" style="color:var(--text-muted);">Checksums / Tipos</p>
+          </div>
+        </div>
+        <div class="pipeline-mobile-step" data-step="4">
+          <div class="step-line-v"></div>
+          <div class="step-dot-v">5</div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold">Render</p>
+            <p class="text-xs mt-0.5" style="color:var(--text-muted);">PDF / Gráficos</p>
+          </div>
+        </div>
+        <div class="pipeline-mobile-step" data-step="5">
+          <div class="step-dot-v">6</div>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold">Distribución</p>
+            <p class="text-xs mt-0.5" style="color:var(--text-muted);">Email / Almacén</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- 5 ── TECH STACK ── -->
+    <!-- ════════════════════════════════════════════════ -->
+    <section class="py-10 sm:py-16 section-hidden">
+      <div class="text-center mb-8 sm:mb-12">
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight mb-2 sm:mb-3">Stack <span style="color:var(--accent-cyan);">Tecnológico</span></h2>
+        <p class="text-text-secondary text-xs sm:text-sm md:text-base max-w-xl mx-auto">Componentes que hacen posible el pipeline.</p>
+      </div>
+      <div class="grid grid-cols-3 sm:flex sm:flex-wrap justify-center gap-3 sm:gap-6 md:gap-10">
+        <div class="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-5 rounded-xl transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border:1px solid var(--border-subtle);min-width:0 sm:min-width:100px;">
+          <span class="text-xl sm:text-3xl font-bold font-mono" style="color:var(--accent-cyan);">Py</span>
+          <span class="text-[10px] sm:text-xs font-semibold text-center">Python 3.11</span>
+          <span class="text-[8px] sm:text-[10px] hidden sm:block" style="color:var(--text-muted);">Core runtime</span>
+        </div>
+        <div class="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-5 rounded-xl transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border:1px solid var(--border-subtle);min-width:0 sm:min-width:100px;">
+          <span class="text-xl sm:text-3xl font-bold font-mono" style="color:var(--accent-green);">PD</span>
+          <span class="text-[10px] sm:text-xs font-semibold text-center">Pandas</span>
+          <span class="text-[8px] sm:text-[10px] hidden sm:block" style="color:var(--text-muted);">Manipulación</span>
+        </div>
+        <div class="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-5 rounded-xl transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border:1px solid var(--border-subtle);min-width:0 sm:min-width:100px;">
+          <span class="text-xl sm:text-3xl font-bold font-mono" style="color:var(--accent-purple);">RL</span>
+          <span class="text-[10px] sm:text-xs font-semibold text-center">ReportLab</span>
+          <span class="text-[8px] sm:text-[10px] hidden sm:block" style="color:var(--text-muted);">PDF Engine</span>
+        </div>
+        <div class="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-5 rounded-xl transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border:1px solid var(--border-subtle);min-width:0 sm:min-width:100px;">
+          <span class="text-xl sm:text-3xl font-bold font-mono" style="color:var(--accent-cyan);">MP</span>
+          <span class="text-[10px] sm:text-xs font-semibold text-center">Matplotlib</span>
+          <span class="text-[8px] sm:text-[10px] hidden sm:block" style="color:var(--text-muted);">Gráficos</span>
+        </div>
+        <div class="flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-5 rounded-xl transition-all duration-300 active:scale-[0.97]" style="background:var(--bg-card);border:1px solid var(--border-subtle);min-width:0 sm:min-width:100px;">
+          <span class="text-xl sm:text-3xl font-bold font-mono" style="color:var(--accent-green);">CR</span>
+          <span class="text-[10px] sm:text-xs font-semibold text-center">Cron</span>
+          <span class="text-[8px] sm:text-[10px] hidden sm:block" style="color:var(--text-muted);">Orquestación</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- 6 ── SCHEDULE / CRONTAB ── -->
+    <!-- ════════════════════════════════════════════════ -->
+    <section class="py-10 sm:py-16 section-hidden">
+      <div class="text-center mb-8 sm:mb-12">
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight mb-2 sm:mb-3">Programación <span style="color:var(--accent-cyan);">Cron</span></h2>
+        <p class="text-text-secondary text-xs sm:text-sm md:text-base max-w-xl mx-auto px-2">El pipeline se ejecuta automáticamente según la siguiente expresión.</p>
+      </div>
+      <div class="max-w-2xl mx-auto rounded-xl border p-4 sm:p-6 md:p-8" style="background:var(--bg-card);border-color:var(--border-subtle);">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-4 sm:mb-5">
+          <span class="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded self-start" style="background:rgba(0,240,255,0.06);color:var(--accent-cyan);">● EN VIVO</span>
+          <span class="text-[9px] sm:text-[10px] font-mono" style="color:var(--text-muted);">Próxima ejecución: 2026-05-15 06:00 UTC</span>
+        </div>
+        <div class="grid grid-cols-5 gap-1.5 sm:gap-2 md:gap-3 mb-4 sm:mb-6">
+          <div class="cron-field"><span class="value text-lg sm:text-2xl">0</span><span class="label">Min</span></div>
+          <div class="cron-field"><span class="value text-lg sm:text-2xl">6</span><span class="label">Hora</span></div>
+          <div class="cron-field"><span class="value text-lg sm:text-2xl">*</span><span class="label">Día Mes</span></div>
+          <div class="cron-field"><span class="value text-lg sm:text-2xl">*</span><span class="label">Mes</span></div>
+          <div class="cron-field"><span class="value text-lg sm:text-2xl">1-5</span><span class="label">Día Sem</span></div>
+        </div>
+        <div class="text-[10px] sm:text-xs font-mono text-center" style="color:var(--text-muted);">
+          <span style="color:var(--accent-cyan);">0 6 * * 1-5</span> &nbsp;→&nbsp; Lun–Vie 06:00 UTC
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- 7 ── OUTPUTS ── -->
+    <!-- ════════════════════════════════════════════════ -->
+    <section class="py-10 sm:py-16 section-hidden">
+      <div class="text-center mb-8 sm:mb-12">
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight mb-2 sm:mb-3">Entregables del <span style="color:var(--accent-cyan);">Sistema</span></h2>
+        <p class="text-text-secondary text-xs sm:text-sm md:text-base max-w-xl mx-auto px-2">Lo que genera cada ciclo de ejecución completo.</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5 max-w-4xl mx-auto">
+        <div class="output-card text-center">
+          <div class="text-3xl sm:text-4xl mb-3 sm:mb-4">📄</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-1">Reporte PDF</h3>
+          <p class="text-[11px] sm:text-xs" style="color:var(--text-secondary);">Documento profesional con tablas, gráficos y métricas clave. Generado vía ReportLab con template corporativo.</p>
+          <div class="mt-3 sm:mt-4 text-[9px] sm:text-[10px] font-mono truncate" style="color:var(--text-muted);">~/output/reporte_20260514.pdf</div>
+        </div>
+        <div class="output-card text-center">
+          <div class="text-3xl sm:text-4xl mb-3 sm:mb-4">📋</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-1">Logs Estructurados</h3>
+          <p class="text-[11px] sm:text-xs" style="color:var(--text-secondary);">Registro JSON de cada etapa del pipeline con timestamps, nivel de severidad y trazabilidad por ejecución.</p>
+          <div class="mt-3 sm:mt-4 text-[9px] sm:text-[10px] font-mono truncate" style="color:var(--text-muted);">~/logs/pipeline_20260514.json</div>
+        </div>
+        <div class="output-card text-center">
+          <div class="text-3xl sm:text-4xl mb-3 sm:mb-4">📧</div>
+          <h3 class="font-semibold text-sm sm:text-base mb-1">Distribución Email</h3>
+          <p class="text-[11px] sm:text-xs" style="color:var(--text-secondary);">Envío automatizado del reporte a lista de distribución vía SMTP con adjunto cifrado y confirmación de entrega.</p>
+          <div class="mt-3 sm:mt-4 text-[9px] sm:text-[10px] font-mono truncate" style="color:var(--text-muted);">→ reports@domain.com</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- 8 ── REPORTS MANAGER ── -->
+    <!-- ════════════════════════════════════════════════ -->
+    <section class="py-10 sm:py-16 section-hidden" id="reports-section">
+      <div class="text-center mb-8 sm:mb-12">
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight mb-2 sm:mb-3">Gestión de <span style="color:var(--accent-cyan);">Reportes</span></h2>
+        <p class="text-text-secondary text-xs sm:text-sm md:text-base max-w-xl mx-auto px-2">Genera, descarga y administra los PDFs producidos por el pipeline.</p>
+      </div>
+      <div class="max-w-3xl mx-auto">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8 p-3 sm:p-4 rounded-xl border" style="background:var(--bg-card);border-color:var(--border-subtle);">
+          <button id="btn-generate"
+            class="touch-btn flex-1 px-4 sm:px-5 py-3 rounded-lg text-xs sm:text-sm font-semibold font-mono transition-all duration-300 border active:scale-[0.97]"
+            style="background:rgba(0,240,255,0.08);border-color:rgba(0,240,255,0.2);color:var(--accent-cyan);"
+            onclick="generateNewReport()">
+            ▶ GENERAR REPORTE
+          </button>
+          <span id="generate-status" class="text-[10px] sm:text-[11px] font-mono text-center sm:text-left" style="color:var(--text-muted);">Listo</span>
+        </div>
+        <div id="reports-list">
+          <div class="text-center py-6 sm:py-8 text-xs sm:text-sm font-mono" style="color:var(--text-muted);">
+            Cargando reportes...
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- 9 ── FOOTER ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <footer class="relative z-10 border-t" style="border-color:rgba(255,255,255,0.04);padding-bottom:var(--safe-bottom);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 text-center">
+      <div class="flex items-center justify-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+        <span class="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full" style="background:var(--accent-cyan);box-shadow:0 0 6px rgba(0,240,255,0.5);"></span>
+        <span class="text-[8px] sm:text-[10px] font-mono uppercase tracking-[0.15em] sm:tracking-[0.2em]" style="color:var(--text-muted);">FIN DEL PROCESO · CÓDIGO 0</span>
+        <span class="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full" style="background:var(--accent-cyan);box-shadow:0 0 6px rgba(0,240,255,0.5);"></span>
+      </div>
+      <p class="text-xs sm:text-base font-light tracking-wide px-2" style="color:var(--text-secondary);">
+        Diseñado y desarrollado por <strong style="color:var(--text-primary);font-weight:700;">Dylan Ramirez Lopez</strong>
+      </p>
+      <p class="text-[8px] sm:text-[10px] mt-2 sm:mt-3 font-mono" style="color:var(--text-muted);">© 2026 — DataStream Engine · v3.2.1</p>
+    </div>
+  </footer>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- JAVASCRIPT                                      -->
+  <!-- ════════════════════════════════════════════════ -->
+  <script>
+    (function() {
+      'use strict';
+
+      // ─── 1. TERMINAL ──────────────────────────────────
+      const lines = [
+        { text: '⏳ Inicializando motor DataStream Engine...', delay: 200 },
+        { text: '✓ Configuración cargada desde config.yaml', delay: 180 },
+        { text: '✓ Conectando a PostgreSQL [10.0.0.24:5432]...', delay: 250 },
+        { text: '✓ Conexión establecida — pool de 8 conexiones', delay: 200 },
+        { text: '⏳ Extrayendo esquema de fuentes activas...', delay: 220 },
+        { text: '✓ 12 fuentes detectadas (6 SQL · 4 API · 2 CSV)', delay: 250 },
+        { text: '⏳ Ejecutando extracción paralela...', delay: 300 },
+        { text: '✓ 1,847,203 registros extraídos en 3.42s', delay: 280 },
+        { text: '⏳ Aplicando transformaciones (Pandas)...', delay: 260 },
+        { text: '✓ Normalización completada — 0 errores', delay: 220 },
+        { text: '⏳ Generando visualizaciones (Matplotlib)...', delay: 300 },
+        { text: '✓ 6 gráficos generados en buffer', delay: 200 },
+        { text: '⏳ Componiendo reporte PDF (ReportLab)...', delay: 280 },
+        { text: '✓ reporte_20260514.pdf listo (2.3 MB)', delay: 250 },
+        { text: '⏳ Distribuyendo vía SMTP...', delay: 230 },
+        { text: '✓ Reporte enviado a 4 destinatarios', delay: 200 },
+        { text: '', delay: 100 },
+        { text: '✓ Pipeline completado · 0 fallos · 12.4s total', delay: 300, highlight: true },
+      ];
+
+      const termBody = document.getElementById('terminal-body');
+      let lineIdx = 0, charIdx = 0, currentLineEl = null, isRunning = true;
+
+      function createLineEl(highlight) {
+        const el = document.createElement('div');
+        el.className = 'terminal-line';
+        if (highlight) el.style.color = 'var(--accent-green)';
+        el.style.fontWeight = highlight ? '600' : '400';
+        termBody.appendChild(el);
+        return el;
+      }
+
+      function typeNextChar() {
+        if (!isRunning) return;
+        if (lineIdx >= lines.length) {
+          const cursor = document.createElement('span');
+          cursor.className = 'terminal-cursor';
+          cursor.style.color = 'var(--accent-cyan)';
+          termBody.appendChild(cursor);
+          return;
+        }
+        const line = lines[lineIdx];
+        if (!currentLineEl) {
+          currentLineEl = createLineEl(line.highlight);
+          charIdx = 0;
+        }
+        if (charIdx < line.text.length) {
+          currentLineEl.textContent += line.text[charIdx];
+          charIdx++;
+          termBody.scrollTop = termBody.scrollHeight;
+          const speed = line.text[charIdx - 1] === ' ' ? 12 : 8 + Math.random() * 14;
+          setTimeout(typeNextChar, speed);
+        } else {
+          currentLineEl.style.opacity = '1';
+          currentLineEl.style.whiteSpace = 'normal';
+          currentLineEl.style.overflow = 'visible';
+          currentLineEl = null;
+          lineIdx++;
+          setTimeout(typeNextChar, line.delay);
+        }
+      }
+      setTimeout(typeNextChar, 400);
+
+      // ─── 2. COUNT-UP ────────────────────────────────
+      const statValues = document.querySelectorAll('.stat-value');
+      let countersStarted = false;
+
+      function animateCounter(el) {
+        const target = parseFloat(el.dataset.target);
+        const isPercent = target === 99.97;
+        const duration = 2000;
+        const start = performance.now();
+        function update(now) {
+          const elapsed = now - start;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = eased * target;
+          if (isPercent) el.textContent = current.toFixed(2) + '%';
+          else el.textContent = Math.round(current).toLocaleString('es');
+          if (progress < 1) requestAnimationFrame(update);
+          else el.textContent = isPercent ? target.toFixed(2) + '%' : Math.round(target).toLocaleString('es');
+        }
+        requestAnimationFrame(update);
+      }
+
+      const statsObserver = new IntersectionObserver((entries) => {
+        if (entries.some(e => e.isIntersecting) && !countersStarted) {
+          countersStarted = true;
+          statValues.forEach(animateCounter);
+          statsObserver.disconnect();
+        }
+      }, { threshold: 0.3 });
+      document.querySelectorAll('.stat-card').forEach(card => statsObserver.observe(card));
+
+      // ─── 3. PIPELINE ANIMATION ──────────────────────
+      function setupPipeline(containerSelector, stepSelector, activeClass) {
+        const container = document.querySelector(containerSelector);
+        if (!container) return null;
+        const steps = container.querySelectorAll(stepSelector);
+        let interval = null, current = 0;
+
+        function reset() { steps.forEach(s => s.classList.remove(activeClass)); current = 0; }
+        function advance() {
+          steps.forEach((s, i) => { if (i <= current) s.classList.add(activeClass); else s.classList.remove(activeClass); });
+          current = (current + 1) % (steps.length + 1);
+          if (current > steps.length) current = 0;
+        }
+        function start() { reset(); interval = setInterval(advance, 1200); }
+        start();
+
+        if (containerSelector === '#pipeline' || containerSelector === '#pipeline-mobile') {
+          container.addEventListener('mouseenter', () => {
+            if (interval) clearInterval(interval); interval = null;
+            reset(); steps.forEach(s => s.classList.add(activeClass));
+          });
+          container.addEventListener('mouseleave', () => {
+            steps.forEach(s => s.classList.remove(activeClass)); current = 0;
+            interval = setInterval(advance, 1200);
+          });
+        }
+        return { advance };
+      }
+
+      const desk = setupPipeline('#pipeline', '.pipeline-step', 'active');
+      const mob = setupPipeline('#pipeline-mobile', '.pipeline-mobile-step', 'active');
+
+      // ─── 4. SCROLL REVEAL ───────────────────────────
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('section-visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      document.querySelectorAll('.section-hidden').forEach(el => revealObserver.observe(el));
+
+      // ─── 5. FEATURE CARD MOUSE GLOW ─────────────────
+      document.querySelectorAll('.feature-card').forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+          const rect = card.getBoundingClientRect();
+          card.style.setProperty('--mx', (e.clientX - rect.left) + 'px');
+          card.style.setProperty('--my', (e.clientY - rect.top) + 'px');
+        });
+      });
+
+      // ─── 6. MOBILE-SAFE TOUCH FEEDBACK ─────────────
+      document.querySelectorAll('.feature-card, .output-card, .stat-card, .touch-btn').forEach(el => {
+        el.addEventListener('touchstart', function() {
+          this.style.transform = 'scale(0.97)';
+        }, { passive: true });
+        el.addEventListener('touchend', function() {
+          this.style.transform = '';
+        }, { passive: true });
+      });
+
+    })();
+  </script>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- REAL API INTEGRATION                            -->
+  <!-- ════════════════════════════════════════════════ -->
+  <script>
+    (function() {
+      const API = 'http://localhost:8000/api';
+
+      async function loadRealStats() {
+        try {
+          const res = await fetch(API + '/stats');
+          if (!res.ok) return;
+          const stats = await res.json();
+          const targets = [
+            stats.total_records || 1847203,
+            stats.active_sources || 12,
+            stats.uptime || 99.97,
+            stats.total_executions || 2472,
+          ];
+          document.querySelectorAll('.stat-value').forEach((el, i) => {
+            el.dataset.target = targets[i];
+            el.textContent = '0';
+          });
+        } catch (_) {}
+      }
+
+      async function loadReports() {
+        const container = document.getElementById('reports-list');
+        try {
+          const res = await fetch(API + '/reports');
+          if (!res.ok) throw new Error();
+          const reports = await res.json();
+          renderReports(reports, container);
+        } catch (_) {
+          container.innerHTML =
+            '<div class="text-center py-6 sm:py-8 text-xs sm:text-sm font-mono" style="color:var(--text-muted);">' +
+            '⚠ Backend no disponible. Ejecuta: <span class="text-[10px] sm:text-xs" style="color:var(--accent-cyan);">cd backend && python main.py</span>' +
+            '</div>';
+        }
+      }
+
+      function renderReports(reports, container) {
+        if (!reports || reports.length === 0) {
+          container.innerHTML =
+            '<div class="text-center py-6 sm:py-8 text-xs sm:text-sm font-mono" style="color:var(--text-muted);">' +
+            'No hay reportes generados. Haz clic en "GENERAR REPORTE".' +
+            '</div>';
+          return;
+        }
+        let html = '<div class="space-y-2 sm:space-y-3">';
+        reports.forEach(r => {
+          const date = r.created_at ? new Date(r.created_at).toLocaleString('es') : '—';
+          html +=
+            '<div class="flex flex-col xs:flex-row items-start xs:items-center justify-between p-3 sm:p-3.5 rounded-lg border transition-all duration-200" ' +
+            'style="background:var(--bg-card);border-color:var(--border-subtle);">' +
+            '<div class="flex items-center gap-2 sm:gap-3 min-w-0 w-full xs:w-auto mb-2 xs:mb-0">' +
+            '<span class="flex-shrink-0" style="color:var(--accent-cyan);">📄</span>' +
+            '<div class="min-w-0">' +
+            '<p class="text-xs sm:text-sm font-mono font-medium truncate" style="color:var(--text-primary);">' + r.filename + '</p>' +
+            '<p class="text-[9px] sm:text-[10px] font-mono" style="color:var(--text-muted);">' +
+            (r.size_kb || '0') + ' KB · ' + date +
+            '</p></div></div>' +
+            '<div class="flex items-center gap-2 flex-shrink-0 self-end xs:self-auto">' +
+            '<button onclick="downloadReport(\'' + r.filename + '\')" ' +
+            'class="touch-btn text-[10px] sm:text-[11px] font-mono px-3 sm:px-3 py-2 rounded-md transition-all duration-200 active:scale-[0.95]" ' +
+            'style="background:rgba(0,240,255,0.06);color:var(--accent-cyan);border:1px solid rgba(0,240,255,0.12);">DESCARGAR</button>' +
+            '<button onclick="deleteReport(\'' + r.filename + '\')" ' +
+            'class="touch-btn text-[10px] sm:text-[11px] font-mono px-3 sm:px-3 py-2 rounded-md transition-all duration-200 active:scale-[0.95]" ' +
+            'style="background:rgba(255,60,60,0.06);color:#ff6b6b;border:1px solid rgba(255,60,60,0.12);">ELIMINAR</button>' +
+            '</div></div>';
+        });
+        html += '</div>';
+        container.innerHTML = html;
+      }
+
+      window.generateNewReport = async function() {
+        const btn = document.getElementById('btn-generate');
+        const status = document.getElementById('generate-status');
+        btn.disabled = true;
+        btn.textContent = '⏳ GENERANDO...';
+        status.textContent = 'Ejecutando pipeline...';
+        try {
+          const res = await fetch(API + '/generate', { method: 'POST' });
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          status.textContent = '✓ ' + (data.filename || 'Reporte generado');
+          await loadReports();
+        } catch (e) {
+          status.textContent = '✗ Error: ' + e.message;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '▶ GENERAR REPORTE';
+        }
+      };
+
+      window.downloadReport = function(filename) {
+        const a = document.createElement('a');
+        a.href = API + '/reports/' + encodeURIComponent(filename);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+
+      window.deleteReport = async function(filename) {
+        if (!confirm('Eliminar ' + filename + '?')) return;
+        try {
+          const res = await fetch(API + '/reports/' + encodeURIComponent(filename), { method: 'DELETE' });
+          if (!res.ok) throw new Error('Delete failed');
+          await loadReports();
+        } catch (e) {
+          alert('Error al eliminar: ' + e.message);
+        }
+      };
+
+      loadRealStats();
+      loadReports();
+    })();
+  </script>
+
+</body>
+</html>
