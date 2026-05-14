@@ -1,5 +1,5 @@
 """Vercel Serverless Function entry point."""
-import os, sys, traceback
+import os, sys, traceback, io
 from pathlib import Path
 
 os.environ.setdefault("MATPLOTLIB_BACKEND", "Agg")
@@ -7,7 +7,6 @@ os.environ.setdefault("MATPLOTLIB_BACKEND", "Agg")
 backend_dir = str(Path(__file__).resolve().parent.parent / "backend")
 sys.path.insert(0, backend_dir)
 
-# Define app at top level so Vercel can detect it
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,11 +17,12 @@ try:
     import importlib
     mod = importlib.import_module("app")
     app = getattr(mod, "app")
-    print("[VERCEL] Backend app loaded successfully", flush=True)
+    print("[VERCEL] Backend loaded OK", flush=True)
 except Exception as e:
-    print(f"[VERCEL] Backend import failed: {e}", flush=True)
-    traceback.print_exc()
+    buf = io.StringIO()
+    traceback.print_exc(file=buf)
+    tb = buf.getvalue()
 
     @app.get("/api/ping")
     def ping():
-        return {"status": "ok", "message": "Fallback — backend modules failed to load"}
+        return {"status": "error", "detail": str(e), "traceback": tb}
