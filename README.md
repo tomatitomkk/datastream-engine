@@ -1,4 +1,4 @@
-# ⚡ DataStream Engine — High Engineering System
+#  DataStream Engine — High Engineering System
 
 > Pipeline ETL autónomo con dashboard en tiempo real, generación de reportes PDF y distribución automatizada.
 
@@ -206,7 +206,7 @@ from main import app
 
 5. **Desplegar**: Vercel detecta automáticamente las Python Serverless Functions en la carpeta `api/`.
 
-> ⚠️ **Nota**: El dashboard (`index.html`) debe actualizar la constante `API` en el bloque de integración para apuntar a la URL de producción de Vercel en lugar de `localhost:8000`.
+>  **Nota**: El dashboard (`index.html`) debe actualizar la constante `API` en el bloque de integración para apuntar a la URL de producción de Vercel en lugar de `localhost:8000`.
 
 ---
 
